@@ -8,3 +8,4 @@ clap = { version = "4.5.60", features = ["derive"] }
 memfd = "0.6.5"
 wayland-client = "0.31.11"
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+zerocopy = "0.8.39"

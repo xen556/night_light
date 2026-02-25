@@ -5,7 +5,13 @@ use wayland_protocols_wlr::gamma_control::v1::client::zwlr_gamma_control_manager
 use wayland_protocols_wlr::gamma_control::v1::client::zwlr_gamma_control_v1::ZwlrGammaControlV1;
 use wayland_protocols_wlr::gamma_control::v1::client::zwlr_gamma_control_v1::Event as GammaEvent;
 use memfd::MemfdOptions;
-
+use std::io::Write;
+use std::os::fd::{IntoRawFd, OwnedFd};
+use zerocopy::IntoBytes;
+use std::os::fd::FromRawFd;
+use std::os::fd::AsFd;
+use std::io::Seek;
+use std::io::SeekFrom;
 struct AppData {
     monitors: Vec<WlOutput>,
     gamma_manager: Option<ZwlrGammaControlManagerV1>,
@@ -98,6 +104,20 @@ pub fn rgbcol(level: i32, size: u32) -> Vec<u16> {
     return rgb
 }
 
+pub fn mem(rgb: &[u16]) -> OwnedFd {
+    let opts = MemfdOptions::default().allow_sealing(true);
+    let mfd = opts.create("rgb").unwrap();
+    let size = rgb.len() * 2;
+    mfd.as_file().set_len(size as u64).unwrap();
+
+    let u8_slice: &[u8] = rgb.as_bytes();
+    mfd.as_file().seek(SeekFrom::Start(0)).unwrap();
+    mfd.as_file().write_all(u8_slice).unwrap();
+    mfd.as_file().write_all(u8_slice).unwrap();
+    unsafe { OwnedFd::from_raw_fd(mfd.into_raw_fd()) }
+
+}
+
 pub fn night_light(level: i32) {
     let conn = Connection::connect_to_env().unwrap();
     let mut queue = conn.new_event_queue();
@@ -110,16 +130,22 @@ pub fn night_light(level: i32) {
     };
     queue.roundtrip(&mut data).unwrap();
 
+    let mut controls: Vec<ZwlrGammaControlV1> = Vec::new(); 
     if let Some(manager) = &data.gamma_manager {
         for monitor in &data.monitors {
-            let manager = manager.get_gamma_control(monitor, &qh, ());
+            let control = manager.get_gamma_control(monitor, &qh, ());
+            controls.push(control);
         }
     }
     queue.roundtrip(&mut data).unwrap();
+    
     let rgb = rgbcol(level, data.gamma_size);
     println!("gamma_size: {}", data.gamma_size);
-    println!("rgb len: {}", rgb.len());
-
-    //println!("{}", data.monitors.len());
-    //println!("{}", data.gamma_manager.is_some());
+    println!("rgb.len(): {}", rgb.len());
+    println!("expected bytes: {}", data.gamma_size * 3 * 2);
+    let fd = mem(&rgb);
+    for control in &controls {
+        control.set_gamma(fd.as_fd());
+    }
+    queue.roundtrip(&mut data).unwrap();
 }
