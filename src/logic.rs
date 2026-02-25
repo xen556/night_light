@@ -143,7 +143,6 @@ pub fn night_light(level: i32) {
     queue.roundtrip(&mut data).unwrap();
     
     let rgb = rgbcol(level, data.gamma_size);
-    eprintln!("r: {}, g: {}, b: {}", rgb[0], rgb[4096], rgb[8192]);
     let fd = mem(&rgb);
     for control in &controls {
         control.set_gamma(fd.as_fd());
