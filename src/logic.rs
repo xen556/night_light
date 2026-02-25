@@ -81,25 +81,24 @@ impl Dispatch<ZwlrGammaControlV1, ()> for AppData {
     }
 }
 
-pub fn convert(level: i32) -> u16 {
-    (level as f64 / 100.0 * 65535.0) as u16
-}
-
 pub fn rgbcol(level: i32, size: u32) -> Vec<u16> {
+    let warmth = level as f64 / 100.0;
     let mut rgb: Vec<u16> = Vec::new();
-    for _ in 0..size {
-        let r = 65535;
-        rgb.push(r);
+    
+    for i in 0..size {
+        let v = (i as f64 / (size - 1) as f64 * 65535.0) as u16;
+        rgb.push(v);
     }
-    for _ in 0..size {
-        let g = 65535;
-        rgb.push(g);
+    for i in 0..size {
+        let v = (i as f64 / (size - 1) as f64 * 65535.0 * (1.0 - warmth * 0.45)) as u16;
+        rgb.push(v);
     }
-    for _ in 0..size {
-        let b = convert(level);
-        rgb.push(b);
+    for i in 0..size {
+        let v = (i as f64 / (size - 1) as f64 * 65535.0 * (1.0 - warmth * 0.90)) as u16;
+        rgb.push(v);
     }
-    return rgb
+    
+    rgb
 }
 
 pub fn mem(rgb: &[u16]) -> OwnedFd {
@@ -144,9 +143,13 @@ pub fn night_light(level: i32) {
     queue.roundtrip(&mut data).unwrap();
     
     let rgb = rgbcol(level, data.gamma_size);
+    eprintln!("r: {}, g: {}, b: {}", rgb[0], rgb[4096], rgb[8192]);
     let fd = mem(&rgb);
     for control in &controls {
         control.set_gamma(fd.as_fd());
     }
     queue.roundtrip(&mut data).unwrap();
+    loop {
+        queue.blocking_dispatch(&mut data).unwrap();
+    }
 }
