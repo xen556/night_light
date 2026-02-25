@@ -1,6 +1,6 @@
 # night-light
 
-A simple night light daemon for Hyprland (and other wlroots-based Wayland compositors) that reduces blue light to help you fall asleep easier.
+A simple night light daemon for Hyprland (and other wlroots-based Wayland compositors) that reduces blue light.
 
 > **Note:** Does **not** work on GNOME or KDE — they don't support the `zwlr_gamma_control_v1` protocol.
 
