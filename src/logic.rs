@@ -149,15 +149,20 @@ pub fn daemon() {
         }
     }
     queue.roundtrip(&mut data).unwrap();
-    
-    let rgb = rgbcol(level, data.gamma_size);
-    eprintln!("r: {}, g: {}, b: {}", rgb[0], rgb[4096], rgb[8192]);
-    let fd = mem(&rgb);
-    for control in &controls {
-        control.set_gamma(fd.as_fd());
-    }
-    queue.roundtrip(&mut data).unwrap();
+
     loop {
-        queue.blocking_dispatch(&mut data).unwrap();
+        let level = fs::read_to_string("/tmp/night-light")
+            .unwrap_or("50".to_string())
+            .trim()
+            .parse::<i32>()
+            .unwrap_or(50);
+
+        let rgb = rgbcol(level, data.gamma_size);
+        let fd = mem(&rgb);
+        for control in &controls {
+            control.set_gamma(fd.as_fd());
+        }
+        queue.roundtrip(&mut data).unwrap();
+        thread::sleep(Duration::from_secs(1));
     }
 }
