@@ -1,92 +1,101 @@
 # night-light
 
-A simple night light daemon for Hyprland (and other wlroots-based Wayland compositors) that reduces blue light.
+A minimal night light daemon for wlroots-based Wayland compositors.
+Applies a warm gamma curve to all connected monitors using the
+`zwlr_gamma_control_v1` protocol.
 
-> **Note:** Does **not** work on GNOME or KDE — they don't support the `zwlr_gamma_control_v1` protocol.
+> Note: Does NOT work on GNOME or KDE (they do not support this protocol).
 
-## How it works
-
-Uses the `zwlr_gamma_control_v1` Wayland protocol to apply a warm gamma LUT to all connected monitors, reducing green and blue light while keeping red intact. The lower the blue light, the less melatonin is suppressed — making it easier to fall asleep.
+---
 
 ## Requirements
 
-- Hyprland (or any wlroots-based compositor: Sway, river, etc.)
+- wlroots-based compositor (Hyprland, Sway, river, etc.)
+- Linux
 - Rust + Cargo
+
+---
 
 ## Installation
 
-```bash
 git clone https://github.com/yourusername/night-light
 cd night-light
 cargo build --release
 sudo cp target/release/night-light /usr/local/bin/
-```
+
+---
 
 ## Usage
 
-```bash
-# Default (level 50)
-night-light
+Set level (0–100):
 
-# Custom level (1-100, higher = warmer/more orange)
-night-light --level 80
-```
+night-light --level 70
 
-Run in background:
+Default level: 50
 
-```bash
-night-light --level 75 &
-```
+The level is stored in:
 
-To stop and restore normal colors:
+/tmp/night-light
 
-```bash
-killall night-light
-```
+Run daemon:
 
-## Autostart with Hyprland
+night-light --daemon
 
-Add to your `~/.config/hypr/hyprland.conf`:
+Daemon behavior:
+- Connects to Wayland
+- Detects all wl_output monitors
+- Creates gamma control per output
+- Reads /tmp/night-light every second
+- Regenerates and reapplies gamma tables
 
-```ini
-exec-once = night-light --level 75
-```
+---
 
-## Systemd user service
+## Level Guide
 
-Create `~/.config/systemd/user/night-light.service`:
+0        Neutral (no warmth)
+20       Slightly warmer
+40–60    Comfortable evening warmth
+70–80    Strong orange tint
+90–100   Very warm, minimal blue light
 
-```ini
+---
+
+## Autostart (Hyprland)
+
+Add to:
+~/.config/hypr/hyprland.conf
+
+exec-once = night-light --daemon
+
+---
+
+## Systemd User Service
+
+Create:
+~/.config/systemd/user/night-light.service
+
 [Unit]
 Description=Night Light
 
 [Service]
-ExecStart=/usr/local/bin/night-light --level 75
+ExecStart=/usr/local/bin/night-light --daemon
 Restart=on-failure
 
 [Install]
 WantedBy=default.target
-```
 
-Enable it:
+Enable:
 
-```bash
 systemctl --user enable --now night-light
-```
 
-## Level guide
-
-| Level | Effect |
-|-------|--------|
-| 1-20  | Very subtle, barely noticeable |
-| 30-50 | Mild warm tint, similar to Windows Night Light |
-| 60-80 | Strong orange, good for evening use |
-| 90-100 | Very intense, ~2700K candlelight, maximum sleep benefit |
+---
 
 ## Dependencies
 
-- `wayland-client`
-- `wayland-protocols-wlr`
-- `memfd`
-- `zerocopy`
-- `clap`
+- wayland-client
+- wayland-protocols-wlr
+- memfd
+- zerocopy
+- clap
+
+---
