@@ -1,0 +1,20 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running `target/debug/night-light --daemon`
+[Daemon] Starting...
+[Daemon] Connected to Wayland
+[Daemon] Found 1 monitors
+[Daemon] Gamma manager found: true
+[Daemon] Created gamma control for monitor 0
+[Daemon] Gamma size: 256
+[Daemon] Ready. Listening for level changes...
+[Daemon] Level changed to: 100
+[rgbcol] Level: 100, Warmth: 1.00, Size: 256
+[rgbcol] Red - first: 0, last: 65535
+[rgbcol] Green - first: 0, last: 36044
+[rgbcol] Blue - first: 0, last: 6553
+[Daemon] Generated RGB ramp with 768 values
+[mem] Created memfd with 1536 bytes, sample: R[last]=65535, G[0]=0, B[0]=0
+[Daemon] Created memory file
+[Daemon] Calling set_gamma for monitor 0
+[Daemon] set_gamma called for monitor 0
+[Daemon] Gamma update applied

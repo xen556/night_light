@@ -10,6 +10,9 @@ use zerocopy::IntoBytes;
 use std::os::fd::FromRawFd;
 use std::os::fd::AsFd;
 use std::io::{Write, SeekFrom, Seek};
+use std::fs::{self, File};
+use std::thread;
+use std::time::Duration;
 struct AppData {
     monitors: Vec<WlOutput>,
     gamma_manager: Option<ZwlrGammaControlManagerV1>,
@@ -108,6 +111,8 @@ pub fn mem(rgb: &[u16]) -> OwnedFd {
     mfd.as_file().set_len(size as u64).unwrap();
 
     let u8_slice: &[u8] = rgb.as_bytes();
+    mfd.as_file().write_all(u8_slice).unwrap();
+    mfd.as_file().seek(SeekFrom::Start(0)).unwrap();
 
     mfd.add_seals(&[
         FileSeal::SealShrink,
@@ -115,13 +120,16 @@ pub fn mem(rgb: &[u16]) -> OwnedFd {
     ]).unwrap();
     mfd.add_seal(FileSeal::SealSeal).unwrap();
 
-    mfd.as_file().write_all(u8_slice).unwrap();
-    mfd.as_file().seek(SeekFrom::Start(0)).unwrap();
     unsafe { OwnedFd::from_raw_fd(mfd.into_raw_fd()) }
 
 }
 
-pub fn night_light(level: i32) {
+pub fn level_save(level: i32) {
+    let mut file = File::create("/tmp/night-light").unwrap();
+    writeln!(file, "{}", level).unwrap();
+}
+
+pub fn daemon() {
     let conn = Connection::connect_to_env().unwrap();
     let mut queue = conn.new_event_queue();
     let qh = queue.handle();
@@ -141,15 +149,20 @@ pub fn night_light(level: i32) {
         }
     }
     queue.roundtrip(&mut data).unwrap();
-    
-    let rgb = rgbcol(level, data.gamma_size);
-    eprintln!("r: {}, g: {}, b: {}", rgb[0], rgb[4096], rgb[8192]);
-    let fd = mem(&rgb);
-    for control in &controls {
-        control.set_gamma(fd.as_fd());
-    }
-    queue.roundtrip(&mut data).unwrap();
+
     loop {
-        queue.blocking_dispatch(&mut data).unwrap();
+        let level = fs::read_to_string("/tmp/night-light")
+            .unwrap_or("50".to_string())
+            .trim()
+            .parse::<i32>()
+            .unwrap_or(50);
+
+        let rgb = rgbcol(level, data.gamma_size);
+        let fd = mem(&rgb);
+        for control in &controls {
+            control.set_gamma(fd.as_fd());
+        }
+        queue.roundtrip(&mut data).unwrap();
+        thread::sleep(Duration::from_secs(1));
     }
 }
